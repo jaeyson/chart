@@ -21,9 +21,40 @@ import "phoenix_html"
 import {Socket} from "phoenix"
 import {LiveSocket} from "phoenix_live_view"
 import topbar from "../vendor/topbar"
+import Chart from 'chart.js/auto'
 
 let csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content")
-let liveSocket = new LiveSocket("/live", Socket, {params: {_csrf_token: csrfToken}})
+
+let hooks = {}
+hooks.ChartJS =  {
+	dataset() {
+  	console.log('dataset', this.el)
+		return JSON.parse(this.el.dataset.points)
+	},
+  mounted() {
+  	console.log('mounted', this.el)
+    const ctx = this.el
+	  const data = {
+      type: 'bar',
+      data: {
+		    // random data to validate chart generation
+		    labels: ['A', 'B', 'C', 'D', 'E'],
+		    datasets: [{data: this.dataset()}]
+		  }
+	  }
+    const chart = new Chart(ctx, data)
+    this.handleEvent("update_points", function(payload) {
+    	chart.data.datasets[0].data = payload.points
+    	chart.update()
+    })
+  },
+  updated() {
+  	console.log('updated', this.el)
+  	this.el.chart.data.datasets[0].data = this.dataset()
+  }
+} 
+
+let liveSocket = new LiveSocket("/live", Socket, {hooks: hooks, params: {_csrf_token: csrfToken}})
 
 // Show progress bar on live navigation and form submits
 topbar.config({barColors: {0: "#29d"}, shadowColor: "rgba(0, 0, 0, .3)"})
